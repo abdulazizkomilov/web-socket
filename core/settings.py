@@ -8,7 +8,7 @@ SECRET_KEY = "django-insecure-fwac+(yk4dlp#1%!rz@$cr@4zmge+sm=%h5gr)7q_66tyrtx-*
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 
