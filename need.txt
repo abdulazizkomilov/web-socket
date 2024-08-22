@@ -1,0 +1,201 @@
+{
+    "repo_url": "https://github.com/abdulazizkomilov/medium-clone-backend-initial.git",
+    "test_url": "tests/reset-password-api-a5266/"
+}
+
+{
+    "repo_url": "https://github.com/sayyUkhty/medium-clone-backend-initial.git",
+    "test_url": ""
+}
+
+
+{
+    "action": "loadFileTree",
+    "project_dir": "abdulazizkomilov/"
+}
+
+
+
+import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+import docker
+import asyncio
+
+
+class ProjectConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        """
+        connect to the websocket
+        """
+        await self.accept()
+
+        # if self.scope["user"].is_authenticated:
+        #     await self.accept()
+        # else:
+        #     await self.close()
+
+    async def disconnect(self, close_code):
+        pass
+
+    async def receive(self, text_data):
+        """
+        receive: {
+                    "repo_url": "...",
+                    "test_url": "..."
+                }
+        """
+        try:
+            data = json.loads(text_data)
+            repo_url = data.get('repo_url')
+            test_url = data.get('test_url')
+
+            if not repo_url:
+                await self.send_log('No repository URL provided.')
+                return
+
+            username = self.get_github_username(repo_url)
+            await self.handle_project(username, repo_url, test_url)
+        except json.JSONDecodeError:
+            await self.send_log('Invalid JSON received.')
+
+    async def send_log(self, message):
+        """
+        Sends a message to the client.
+        """
+        await self.send(text_data=json.dumps({'message': message}))
+
+    def get_github_username(self, url):
+        """
+        Extracts the GitHub username from the URL.
+        """
+        try:
+            # Extract the part of the URL after 'github.com/'
+            path = url.split('github.com/')[1]
+            username = path.split('/')[0]
+            return username
+        except IndexError:
+            raise ValueError('Invalid GitHub URL')
+
+    async def handle_project(self, username, repo_url, test_url):
+        """
+        Handles the project.
+        """
+        container_name = 'medium_app'
+        project_dir = f'./{username}'  # to separate multiple clone projects
+        client = docker.from_env()
+
+        try:
+            # Connect to the existing container
+            container = client.containers.get(container_name)
+
+            # remove if project exists
+            await self.send_log('Removing project...')
+            await self.run_command(container, f'rm -rf {project_dir}')
+
+            # Clone the repository inside the container
+            await self.send_log('Cloning repository...')
+            clone_command = f'git clone {repo_url} {project_dir}'
+            await self.run_command(container, clone_command)
+
+            # Create and edit .env file
+            await self.send_log("Creating .env file...")
+            env_content = f"""
+            SECRET_KEY=g7df7fg8i34ui398d7fg567sd5f098dfg7df
+            DEBUG=True
+            DB_ENGINE=django.db.backends.postgresql_psycopg2
+            DB_NAME=medium_db
+            DB_USER=medium_user
+            DB_PASSWORD=medium_user_password
+            DB_HOST=localhost
+            DB_PORT=5432
+            REDIS_HOST=medium_redis_host
+            REDIS_PORT=6379
+            REDIS_DB=1
+            EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+            EMAIL_HOST=smtp.gmail.com
+            EMAIL_USE_TLS=True
+            EMAIL_PORT=587
+            EMAIL_HOST_USER=testuser@gmail.com
+            EMAIL_HOST_PASSWORD=awcbkzxyfbhcxkku
+            """
+            await self.run_command(container, f'echo "{env_content.strip()}" > {project_dir}/.env')
+
+            # remove tests folder
+            await self.send_log('Removing tests folder...')
+            await self.run_command(container, f'rm -rf {project_dir}/tests')
+
+            # cp tests folder
+            await self.send_log('Copying tests folder...')
+            await self.run_command(container, f'cp -r ./tests {project_dir}/')
+
+            # List files in project directory
+            # await self.send_log('Listing project directory...')
+            # await self.run_command(container, f'ls -a {project_dir}')
+
+            # Install dependencies
+            # await self.send_log('Installing requirements...')
+            # await self.run_command(container, f'pip install --no-cache-dir -r {project_dir}/requirements.txt')
+
+            # Check Redis connectivity
+            await self.send_log('Checking Redis connectivity...')
+            await self.run_command(container, 'redis-cli -h medium_redis_host -p 6379 ping')
+            await self.send_log('Redis is connected successfully.')
+
+            # Run Django checks
+            await self.send_log('Running Django checks...')
+            await self.run_command(container, f'python {project_dir}/manage.py check')
+
+            # Run tests
+            await self.send_log('Running pytest...')
+            await self.run_command(container,
+                                   f'pytest {project_dir}/{test_url} --cache-clear -vv --json-report --json-report-file={project_dir}/test_data.json')
+
+            await self.send_log('Task completed successfully.')
+
+            # remove project folder
+            await self.run_command(container, f'rm -rf {project_dir}')
+
+        except Exception as e:
+            await self.send_log(f'An unexpected error occurred: {e}')
+
+    async def run_command(self, container, command):
+        """
+        Runs a command inside a container.
+        """
+        try:
+            exec_id = container.client.api.exec_create(container.id, command, stdout=True, stderr=True)
+            output = container.client.api.exec_start(exec_id, stream=True)
+
+            async for line in self.iterate_output(output):
+                await self.send_log(line)
+        except Exception as e:
+            await self.send_log(f'Error executing command: {e}')
+
+    async def iterate_output(self, output):
+        """
+        Iterates over the output of a command.
+        """
+        loop = asyncio.get_event_loop()
+        try:
+            while True:
+                line = await loop.run_in_executor(None, next, output, None)
+                if line is None:
+                    break
+                yield line.decode('utf-8')
+        except StopIteration:
+            pass
+        except Exception as e:
+            await self.send_log(f'Error reading output: {e}')
+
+
+
+
+{
+    "message": "Dockerfile\narticles\ndocker-compose.yaml\nmanage.py\nrequirements.txt\ntest_data.json\nusers\nREADME.md\ncore\nlocale\npytest.ini\ntemplates\ntests"
+}
+
+{
+    "message": "__init__.py\n__pycache__\nadmin.py\napps.py\nfilters.py\nmigrations\nmodels.py\nserializers.py\ntests.py\nurls.py\nviews.py"
+}
+
+...

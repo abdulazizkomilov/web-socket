@@ -1,0 +1,48 @@
+version: "3.9"
+services:
+  ubuntu_container:
+    container_name: ubuntu_container
+    image: ubuntu:latest
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile 
+    volumes:
+      - .:/my_code
+    networks:
+      - docker_network
+    command: tail -f /dev/null
+    depends_on:
+      - databse_host
+      - redis_host
+
+  databse_host:
+    container_name: databse_host
+    image: postgres:15-alpine
+    restart: always
+    env_file:
+      - .env.example
+    environment:
+      - POSTGRES_USER=databse_user
+      - POSTGRES_PASSWORD=databse_password
+      - POSTGRES_DB=databse_host
+    expose:
+      - "5432"
+    networks:
+      - docker_network
+
+  redis_host:
+    container_name: redis_host
+    image: "redis:7-alpine"
+    env_file:
+      - .env.example
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+       - docker_network
+
+networks:
+  docker_network:
