@@ -39,7 +39,7 @@ services:
     expose:
       - "6380"
     ports:
-      - "6380:6380"
+      - "6379:6380"
     restart: always
     networks:
        - docker_network
