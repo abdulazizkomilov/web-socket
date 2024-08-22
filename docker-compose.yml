@@ -37,9 +37,9 @@ services:
     env_file:
       - .env.example
     expose:
-      - "6379"
+      - "6380"
     ports:
-      - "6379:6379"
+      - "6380:6380"
     restart: always
     networks:
        - docker_network
