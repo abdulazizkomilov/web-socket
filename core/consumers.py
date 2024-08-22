@@ -59,7 +59,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
                 f"sed -i 's/DB_HOST=.*/DB_HOST=databse_host/' {project_dir}/.env.example",
                 f"sed -i 's/DB_PORT=.*/DB_PORT=5432/' {project_dir}/.env.example",
                 f"sed -i 's/REDIS_HOST=.*/REDIS_HOST=redis_host/' {project_dir}/.env.example",
-                f"sed -i 's/REDIS_PORT=.*/REDIS_PORT=6380/' {project_dir}/.env.example",
+                f"sed -i 's/REDIS_PORT=.*/REDIS_PORT=6379/' {project_dir}/.env.example",
                 f"sed -i 's/REDIS_DB=.*/REDIS_DB=1/' {project_dir}/.env.example"
             ]
 
@@ -80,7 +80,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             await self.run_command(container, f'{project_dir}/env/bin/pip install -r {project_dir}/requirements.txt')
 
             await self.send_log('Checking Redis connectivity...')
-            await self.run_command(container, 'redis-cli -h redis_host -p 6380 ping')
+            await self.run_command(container, 'redis-cli -h redis_host -p 6379 ping')
             await self.send_log('Redis is connected successfully.')
 
             await self.send_log('Running Django checks...')
