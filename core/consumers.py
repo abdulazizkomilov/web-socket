@@ -88,7 +88,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
 
             await self.send_log('Running pytest...')
             await self.run_command(container,
-                                   f'{project_dir}/env/bin/pytest {project_dir}/{test_url} --cache-clear -vv --json-report --json-report-file={project_dir}/test_data.json')
+                                   f'{project_dir}/env/bin/pytest {project_dir}/{test_url} --cache-clear -vv --json-report --json-report-file={project_dir}/unittest-checker-report.json --json-report-indent=2')
 
             await self.send_log('Task completed successfully.')
 
