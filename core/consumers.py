@@ -80,7 +80,7 @@ class ProjectConsumer(AsyncWebsocketConsumer):
             await self.run_command(container, f'{project_dir}/env/bin/pip install -r {project_dir}/requirements.txt')
 
             await self.send_log('Checking Redis connectivity...')
-            await self.run_command(container, 'redis-cli -h redis_host -p 6379 ping')
+            await self.run_command(container, 'redis-cli -h redis_host -p 6380 ping')
             await self.send_log('Redis is connected successfully.')
 
             await self.send_log('Running Django checks...')
