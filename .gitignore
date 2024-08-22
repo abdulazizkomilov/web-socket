@@ -97,6 +97,7 @@ env/
 .vscode/
 .idea/
 .env.*
+.env
 static
 staticfiles
 .ruff_cache
